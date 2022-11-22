@@ -1,7 +1,8 @@
 import { DataSource } from 'typeorm';
-import { Restaurant } from './entities/Restaurant';
-import { Category } from './entities/Category';
-import { Food } from './entities/Food';
+import { Restaurant } from './entitiy/Restaurant';
+import { Category } from './entitiy/Category';
+import { Food } from './entitiy/Food';
+import { RestaurantCategory } from './entitiy/RestaurantCategory';
 // import path from 'path';
 // const entiities = path.join(__dirname, 'entities');
 const AppDataSource = new DataSource({
@@ -13,7 +14,7 @@ const AppDataSource = new DataSource({
   database: 'foodbase',
   //   entities: [Category, Restaurant, Food],
   // entities: ['entities/*.ts'],
-  entities: [Category, Restaurant, Food],
+  entities: [Category, Restaurant, Food, RestaurantCategory],
   //   entities: ['entities/**/*.ts'],
   //   entities:[path.join(entiities,'/**/*.ts')],
   synchronize: true,

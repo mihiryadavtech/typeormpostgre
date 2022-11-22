@@ -11,13 +11,14 @@ import {
 
 import { Category } from './Category';
 import { Food } from './Food';
+import { RestaurantCategory } from '../entitiy/RestaurantCategory';
 
 @Entity('restaurant')
 export class Restaurant extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: false })
+  @Column({ unique: true })
   name: string;
 
   @Column()
@@ -26,9 +27,14 @@ export class Restaurant extends BaseEntity {
   @Column()
   image: string;
 
-  @ManyToMany(() => Category, (category) => category.restaurant)
-  @JoinTable()
-  category: Category[];
+  @OneToMany(
+    () => RestaurantCategory,
+    (restaurantCategory) => restaurantCategory.relRestaurant,
+    {
+      onDelete: 'CASCADE',
+    }
+  )
+  category: RestaurantCategory[];
 
   @OneToMany(() => Food, (food) => food.restaurant)
   food: Food[];
