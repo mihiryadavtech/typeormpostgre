@@ -7,9 +7,9 @@ import {
   ManyToMany,
   BaseEntity,
 } from 'typeorm';
-
 import { Category } from './Category';
 import { Restaurant } from './Restaurant';
+import File from './file';
 
 @Entity('food')
 export class Food extends BaseEntity {
@@ -22,8 +22,8 @@ export class Food extends BaseEntity {
   @Column({ type: 'numeric' })
   price: number;
 
-  @Column()
-  image: string;
+  @Column({ nullable: true, type: 'jsonb' })
+  image: File;
 
   @ManyToOne(() => Category, (category) => category.food)
   category: Category;

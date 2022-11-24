@@ -1,20 +1,23 @@
 import 'reflect-metadata';
-import { DataSource } from 'typeorm';
 import { AppDataSource } from './db';
 
 import express, { Express, NextFunction, Request, Response } from 'express';
+import multer from 'multer';
 import { foodRouter } from './routes/foodroutes';
 import { restaurantRouter } from './routes/restaurantroutes';
 import { categoryRouter } from './routes/categoryroutes';
+import bodyParser from 'body-parser';
 const app = express();
+
 const main = async () => {
   try {
     await AppDataSource.initialize();
 
     // await AppDataSource.initialize().catch((e) => console.log({ e }));
     // console.log('connected to Database');
-
+    app.use('/api/v1/image', express.static('uploads/images'));
     app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
 
     app.use('/api/v1', foodRouter);
     app.use('/api/v1', categoryRouter);

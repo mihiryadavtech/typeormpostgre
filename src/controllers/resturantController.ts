@@ -16,21 +16,45 @@ const getRestaurant = async (
         .createQueryBuilder('restaurant')
         .leftJoinAndSelect('restaurant.category', 'restaurantCategory')
         .leftJoinAndSelect('restaurantCategory.relCategory', 'category')
+        .leftJoinAndSelect('restaurant.food', 'food')
         .where({ id: id })
-        .getOne();
-      res.status(201).json({ data: getRestaurant });
+        .getRawOne();
+
+      let mainRestaurantWithUrl = getRestaurant;
+      const urlSend = getRestaurant.restaurant_image;
+      const urlImage = `http://localhost:8000/api/v1/image/${urlSend.filename}`;
+      mainRestaurantWithUrl.restaurant_image.imageUrl = urlImage;
+
+      res.status(200).json({ data: mainRestaurantWithUrl });
+    } else if (id?.length == 0) {
+      res.status(400).json({
+        message: 'Enter proper query',
+      });
     } else {
       const getRestaurant = await AppDataSource.getRepository(Restaurant)
         .createQueryBuilder('restaurant')
         .leftJoinAndSelect('restaurant.category', 'restaurantCategory')
         .leftJoinAndSelect('restaurantCategory.relCategory', 'category')
         .getMany();
-      res.status(201).json({ data: getRestaurant });
+      let mainRestaurantWithUrl = getRestaurant;
+      const urlSend = getRestaurant;
+      for (let index = 0; index < urlSend.length; index++) {
+        const element = urlSend[index];
+        const imageObj = element.image;
+        const urlImage = `http://localhost:8000/api/v1/image/${imageObj.filename}`;
+        console.log((mainRestaurantWithUrl[index].image.imageurl = urlImage));
+      }
+      res.status(200).json({ data: mainRestaurantWithUrl });
     }
   } catch (error) {
-    res.status(404).json({ data: error.message });
-
-    console.log(error);
+    const errors = {
+      code: 400,
+      error: {
+        message: error.message,
+      },
+      message: ' Somekind Of Error',
+    };
+    res.status(400).json({ errors });
   }
 };
 
@@ -40,30 +64,35 @@ const createRestaurant = async (
   next: NextFunction
 ) => {
   try {
-    const { name, address, image } = req.body;
-    const restaurantExist = await AppDataSource.getRepository(
-      Restaurant
-    ).findOneBy({ name: name });
-    if (!restaurantExist) {
-      const newRestaurant = await AppDataSource.createQueryBuilder()
-        .insert()
-        .into(Restaurant)
-        .values({
-          name: name,
-          address: address,
-          image: image,
-        })
-        .returning('*')
-        .execute();
+    const { name, address } = req.body;
+    const image = req.file;
+    if (typeof name === 'string' && typeof address === 'string') {
+      const restaurantExist = await AppDataSource.getRepository(
+        Restaurant
+      ).findOneBy({ name: name });
+      if (!restaurantExist) {
+        const newRestaurant = await AppDataSource.createQueryBuilder()
+          .insert()
+          .into(Restaurant)
+          .values({
+            name: name,
+            address: address,
+            image: image,
+          })
+          .returning('*')
+          .execute();
 
-      res.status(200).json({ data: newRestaurant.raw });
+        res.status(200).json({ data: newRestaurant.raw[0] });
+      } else {
+        res.status(200).json({ data: 'Restaurant already exist' });
+      }
     } else {
-      res.status(200).json({ data: 'Restaurant already exist' });
+      res
+        .status(404)
+        .json({ message: 'Name must be string and Address must be string' });
     }
   } catch (error) {
     res.status(404).json({ errror: error.message });
-
-    console.log(error);
   }
 };
 
@@ -73,18 +102,25 @@ const updateRestaurant = async (
   next: NextFunction
 ) => {
   const { id } = req.query;
-  const { name, address, image } = req.body;
+  const { name, address } = req.body;
+  const image = req.file?.fieldname;
   try {
-    const newupdatedRestaurant = await AppDataSource.createQueryBuilder()
-      .update(Restaurant)
-      .set({ name: name, address: address, image: image })
-      .where({ id: id })
-      .returning('*')
-      .execute();
-    res.status(201).json({ data: newupdatedRestaurant });
+    if (typeof name === 'string' && typeof address === 'string') {
+      const newupdatedRestaurant = await AppDataSource.createQueryBuilder()
+        .update(Restaurant)
+        .set({ name: name, address: address, image: image })
+        .where({ id: id })
+        .returning('*')
+        .execute();
+      res.status(201).json({ data: newupdatedRestaurant.raw[0] });
+    } else {
+      res
+        .status(404)
+        .json({ message: 'Name must be string and Address must be string' });
+    }
   } catch (error) {
     res.status(201).json({ errror: error.message });
-    console.log(error);
+    // console.log(error);
   }
 };
 
@@ -102,7 +138,7 @@ const deleteRestaurant = async (
       .returning('*')
       .execute();
 
-    res.status(201).json({ data: deleteRestaurant.raw });
+    res.status(201).json({ data: deleteRestaurant.raw[0] });
   } catch (error) {
     console.log(error);
   }
@@ -124,7 +160,6 @@ const createRestRelation = async (
       .createQueryBuilder('category')
       .where('category.id=:id', { id: categoryId })
       .execute();
-    // findOneBy({ id: restId });
     // console.log('======>>>>>>', categoryExist);
 
     if (restaurantExist && categoryExist) {
@@ -139,8 +174,10 @@ const createRestRelation = async (
           catId: categoryExist[0].category_id,
         })
         .execute();
-
-      if (!alReadyRelationExist) {
+      // console.log(alReadyRelationExist);
+      if (alReadyRelationExist?.length) {
+        res.status(404).json({ messsage: 'Already Relation exist' });
+      } else {
         const relationshipData = await AppDataSource.getRepository(
           RestaurantCategory
         )
@@ -153,9 +190,7 @@ const createRestRelation = async (
           })
           .returning('*')
           .execute();
-        res.status(200).json({ data: relationshipData.raw });
-      } else {
-        res.status(404).json({ messsage: 'Already Relation exist' });
+        res.status(200).json({ data: relationshipData.raw[0] });
       }
     } else {
       res
@@ -163,10 +198,57 @@ const createRestRelation = async (
         .json({ message: 'Add the Restaurant and category Value' });
     }
   } catch (error) {
-    res.status(404).json({ message: 'Somekind of error' });
+    res.status(404).json({ message: error.message });
   }
 };
 // };
+const getRestaurantImage = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.query;
+    console.log(req.query);
+    if (id) {
+      const getRestaurant = await AppDataSource.getRepository(Restaurant)
+        .createQueryBuilder('restaurant')
+        .select('restaurant.image')
+        .where({ id: id })
+        .getRawOne();
+      // console.log(getRestaurant);
+      if (getRestaurant) {
+        const urlSend = getRestaurant.restaurant_image;
+        const urlImage = `http://localhost:8000/api/v1/image/${urlSend.filename}`;
+        console.log(urlImage);
+        res.status(201).json({ data: urlImage });
+      } else {
+        res.status(404).json({ message: " Restaurant doesn't Exist " });
+      }
+    } else {
+      const getRestaurant = await AppDataSource.getRepository(Restaurant)
+        .createQueryBuilder('restaurant')
+        .select('restaurant.image')
+        .getRawMany();
+      if (getRestaurant) {
+        const urlSend = getRestaurant;
+        const Images = [];
+        for (const image of urlSend) {
+          const imageObj = image.restaurant_image;
+          const urlImage = `http://localhost:8000/api/v1/image/${imageObj.filename}`;
+          Images.push(urlImage);
+        }
+        res.status(201).json({ data: Images });
+      } else {
+        res.status(404).json({ message: " Restaurant doesn't Exist " });
+      }
+    }
+  } catch (error) {
+    res.status(404).json({
+      error: error.message,
+    });
+  }
+};
 
 // const createrestrelation = async (
 //   req: Request,
@@ -253,4 +335,5 @@ export {
   getRestaurant,
   updateRestaurant,
   createRestRelation as createrestrelation,
+  getRestaurantImage,
 };

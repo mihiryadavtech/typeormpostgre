@@ -13,12 +13,13 @@ import {
 import { Food } from './Food';
 import { Restaurant } from './Restaurant';
 import { RestaurantCategory } from './RestaurantCategory';
-
+import File from './file';
 @Entity('category')
 export class Category extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
-  @Column({ unique: true })
+
+  @Column({ type: 'varchar', unique: true, length: 10 })
   name: string;
 
   // @ManyToMany(() => Restaurant, (restaurant) => restaurant.category)

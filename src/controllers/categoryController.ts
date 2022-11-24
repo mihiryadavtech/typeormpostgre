@@ -78,19 +78,22 @@ const createCategory = async (
 ) => {
   try {
     const { name } = req.body;
-    const newCategory = await AppDataSource.createQueryBuilder()
-      .insert()
-      .into(Category)
-      .values({
-        name: name,
-      })
-      .returning('*')
-      .execute();
+    if (typeof name === 'string' && name.length > 1) {
+      const newCategory = await AppDataSource.createQueryBuilder()
+        .insert()
+        .into(Category)
+        .values({
+          name: name,
+        })
+        .returning('*')
+        .execute();
 
-    res.status(201).json({ data: newCategory.raw });
+      res.status(201).json({ data: newCategory.raw[0] });
+    } else {
+      res.status(404).json({ message: 'Name must be string' });
+    }
   } catch (error) {
-    console.log(error);
-    res.status(404).json({ message: 'SomeKind of error' });
+    res.status(404).json({ message: error.message });
   }
 };
 
@@ -102,17 +105,26 @@ const updateCategory = async (
   try {
     const { id } = req.query;
     const { name } = req.body;
-    const newupdatedCategory = await AppDataSource.createQueryBuilder()
-      .update(Category)
-      .set({ name: name })
-      .where({ id: id })
-      .returning('*')
+    const categoryExist = await AppDataSource.getRepository(Category)
+      .createQueryBuilder('category')
+      .where('category.id=:id', { id: id })
       .execute();
+    // console.log(categoryExist.length);
+    // console.log(typeof categoryExist);
+    if (categoryExist?.length) {
+      const newupdatedCategory = await AppDataSource.createQueryBuilder()
+        .update(Category)
+        .set({ name: name })
+        .where({ id: id })
+        .returning('*')
+        .execute();
 
-    res.status(201).json({ data: newupdatedCategory.raw });
+      res.status(200).json({ data: newupdatedCategory.raw[0] });
+    } else {
+      res.status(404).json({ message: "Category Doesn't Exist" });
+    }
   } catch (error) {
-    console.log(error);
-    res.status(404).json({ data: 'SomeKind of error', error: error.message });
+    res.status(404).json({ data: 'SomeKind of Error', error: error.message });
   }
 };
 
@@ -130,10 +142,9 @@ const deleteCategory = async (
       .returning('*')
       .execute();
 
-    res.status(201).json({ data: deleteCategory.raw });
+    res.status(200).json({ data: deleteCategory.raw[0] });
   } catch (error) {
-    console.log(error);
-    res.status(404).json({ message: 'SomeKind of error' });
+    res.status(404).json({ message: error.message });
   }
 };
 

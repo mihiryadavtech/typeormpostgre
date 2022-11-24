@@ -12,52 +12,63 @@ const createFoodRestaurantCategory = async (
   try {
     // res.send('food relation');
     const { categoryId, restaurantId } = req.query;
-    const { name, price, image } = req.body;
-
-    const restaurantExist = await AppDataSource.getRepository(Restaurant)
-      .createQueryBuilder('restaurant')
-      .where('restaurant.id=:id', { id: restaurantId })
-      .execute();
-    console.log('======>>>>>>', restaurantExist);
-
-    const categoryExist = await AppDataSource.getRepository(Category)
-      .createQueryBuilder('category')
-      .where('category.id=:id', { id: categoryId })
-      .execute();
-
-    if (restaurantExist && categoryExist) {
-      const foodExist = await AppDataSource.getRepository(Food)
-        .createQueryBuilder('food')
-        .where('food.name =:name', { name: name })
-        .andWhere('food.categoryId = :catId', {
-          catId: categoryExist[0].category_id,
-        })
-        .andWhere('food.restaurantId = :restId', {
-          restId: restaurantExist[0].restaurant_id,
-        })
+    const { name } = req.body;
+    const price = parseInt(req.body.price);
+    // parseInt(price);
+    console.log(req.body);
+    const image = req.file;
+    if (typeof name === 'string' && typeof price === 'number') {
+      const restaurantExist = await AppDataSource.getRepository(Restaurant)
+        .createQueryBuilder('restaurant')
+        .where('restaurant.id=:id', { id: restaurantId })
         .execute();
+      // console.log('======>>>>>>', restaurantExist);
 
-      if (foodExist.length) {
-        res.status(200).json({ messsage: 'Food   Exist' });
-      } else {
-        const newFood = await AppDataSource.createQueryBuilder()
-          .insert()
-          .into(Food)
-          .values({
-            name: name,
-            price: price,
-            image: image,
-            category: categoryExist[0].category_id,
-            restaurant: restaurantExist[0].restaurant_id,
+      const categoryExist = await AppDataSource.getRepository(Category)
+        .createQueryBuilder('category')
+        .where('category.id=:id', { id: categoryId })
+        .execute();
+      if (restaurantExist && categoryExist) {
+        const foodExist = await AppDataSource.getRepository(Food)
+          .createQueryBuilder('food')
+          .where('food.name =:name', { name: name })
+          .andWhere('food.categoryId = :catId', {
+            catId: categoryExist[0].category_id,
           })
-          .returning('*')
+          .andWhere('food.restaurantId = :restId', {
+            restId: restaurantExist[0].restaurant_id,
+          })
           .execute();
-        res.status(200).json({ data: newFood.raw });
+
+        if (foodExist.length) {
+          res.status(200).json({ messsage: 'Food   Exist' });
+        } else {
+          // parseInt(price);
+          const newFood = await AppDataSource.createQueryBuilder()
+            .insert()
+            .into(Food)
+            .values({
+              name: name,
+              price: price,
+              image: image,
+
+              category: categoryExist[0].category_id,
+              restaurant: restaurantExist[0].restaurant_id,
+            })
+            .returning('*')
+            .execute();
+          res.status(200).json({ data: newFood.raw[0] });
+        }
+      } else {
+        res.status(404).json({ data: 'First Add Category And Restaurant' });
       }
     } else {
-      res.status(404).json({ data: 'First Add Category And Restaurant' });
+      res
+        .status(404)
+        .json({ message: 'Name must be string and Price must be Number' });
     }
   } catch (error) {
+    console.log(error);
     res.status(404).json({ messsage: error.message });
   }
 };
@@ -93,37 +104,53 @@ const getFood = async (req: Request, res: Response, next: NextFunction) => {
 
 const createFood = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, price, image } = req.body;
-    const newFood = await AppDataSource.createQueryBuilder()
-      .insert()
-      .into(Food)
-      .values({
-        name: name,
-        price: price,
-        image: image,
-      })
-      .returning('*')
-      .execute();
+    const { name } = req.body;
+    const price = parseInt(req.body.price);
+    const image = req.file;
+    if (typeof name === 'string' && typeof price === 'number') {
+      const newFood = await AppDataSource.createQueryBuilder()
+        .insert()
+        .into(Food)
+        .values({
+          name: name,
+          price: price,
+          image: image,
+        })
+        .returning('*')
+        .execute();
 
-    res.status(201).json({ data: newFood.raw });
+      res.status(200).json({ data: newFood.raw[0] });
+    } else {
+      res
+        .status(404)
+        .json({ message: 'Name must be string and Price must be Number' });
+    }
   } catch (error) {
-    console.log(error);
+    res.status(404).json({ message: error.message });
   }
 };
 
 const updateFood = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.query;
-    const { name, price, image } = req.body;
+    const { name } = req.body;
+    const price = parseInt(req.body.price);
+    // console.log(typeof(price));
+    // console.log(name);
 
-    const newupdatedFood = await AppDataSource.createQueryBuilder()
-      .update(Food)
-      .set({ name: name, price: price, image: image })
-      .where({ id: id })
-      .returning('*')
-      .execute();
+    const image = req.file?.originalname;
+    if (typeof name === 'string' && typeof price === 'number') {
+      const newupdatedFood = await AppDataSource.createQueryBuilder()
+        .update(Food)
+        .set({ name: name, price: price, image: image })
+        .where({ id: id })
+        .returning('*')
+        .execute();
 
-    res.status(201).json({ data: newupdatedFood });
+      res.status(201).json({ data: newupdatedFood.raw[0] });
+    } else {
+      console.log('error');
+    }
   } catch (error) {
     console.log(error);
   }
